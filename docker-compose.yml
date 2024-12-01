@@ -1,0 +1,29 @@
+version: "3.13"
+
+services:
+  converter_postgres:
+    image: postgres:15
+    container_name: converter_postgres
+    volumes:
+      - ~/.pg/pg_data/utest:/var/lib/postgresql/data
+    env_file:
+      - .env
+  converter_project:
+    image: converter_django:latest
+    container_name: converter_django
+    depends_on:
+      - converter_postgres
+    env_file:
+      - .env
+    command: >
+      bash -c "./manage.py collectstatic --noinput && ./manage.py migrate  && gunicorn -b 0.0.0.0:8000 convert.wsgi:application"
+  nginx:
+    build:
+      dockerfile: ./Dockerfile
+      context: ./docker/nginx/
+    container_name: converter_nginx
+    image: converter_nginx
+    depends_on:
+      - converter_project
+    ports:
+      - "${NGINX_EXTERNAL_PORT}:80"
